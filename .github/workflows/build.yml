@@ -1,0 +1,1360 @@
+name: Build Levi Game APK
+
+# طريقة التشغيل: Actions ثم Build Levi Game APK ثم Run workflow
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Create project files
+        run: |
+          cat > "settings.gradle" <<'KEOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "LeviGame"
+          include ':app'
+          KEOF
+          cat > "build.gradle" <<'KEOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          KEOF
+          cat > "gradle.properties" <<'KEOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=false
+          android.nonTransitiveRClass=true
+          KEOF
+          mkdir -p "app"
+          cat > "app/build.gradle" <<'KEOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.levi.saint'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.levi.saint'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          KEOF
+          mkdir -p "app/src/main"
+          cat > "app/src/main/AndroidManifest.xml" <<'KEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+
+              <application
+                  android:allowBackup="true"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+                      android:screenOrientation="sensorLandscape">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+              </application>
+          </manifest>
+          KEOF
+          mkdir -p "app/src/main/res/values"
+          cat > "app/src/main/res/values/strings.xml" <<'KEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">ليفاي القديس</string>
+          </resources>
+          KEOF
+          mkdir -p "app/src/main/java/com/levi/saint"
+          cat > "app/src/main/java/com/levi/saint/MainActivity.java" <<'KEOF'
+          package com.levi.saint;
+
+          import android.app.Activity;
+          import android.graphics.Color;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+
+              private WebView web;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+                  web = new WebView(this);
+                  web.setBackgroundColor(Color.BLACK);
+                  web.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                  web.setLongClickable(false);
+                  web.setOnLongClickListener(new View.OnLongClickListener() {
+                      @Override
+                      public boolean onLongClick(View v) {
+                          return true;
+                      }
+                  });
+
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+
+                  web.setWebViewClient(new WebViewClient());
+                  setContentView(web);
+                  web.loadUrl("file:///android_asset/game.html");
+                  hideBars();
+              }
+
+              private void hideBars() {
+                  getWindow().getDecorView().setSystemUiVisibility(
+                          View.SYSTEM_UI_FLAG_FULLSCREEN
+                                  | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                  | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                  | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) {
+                      hideBars();
+                  }
+              }
+
+              @Override
+              protected void onPause() {
+                  super.onPause();
+                  web.onPause();
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  web.onResume();
+              }
+          }
+          KEOF
+          mkdir -p "app/src/main/assets"
+          cat > "app/src/main/assets/game.html" <<'KEOF'
+          <!doctype html>
+          <html lang="ar" dir="rtl">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+          <title>ليفاي القديس</title>
+          </head>
+          <body>
+
+          <meta name="claude:viewport-fit-sides" content="cover">
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap">
+          <style>
+            /* Layout: a 16:9 game canvas on top, thumb pad beneath. One dark look on purpose. */
+            :root {
+              color-scheme: dark;
+              --bg: #0d1016;
+              --panel: #161b24;
+              --ink: #eef1f5;
+              --muted: #98a3b1;
+              --accent: #e0b04a;
+              --btn: #222a36;
+              --btn-on: #3a4658;
+              --line: #2b3442;
+              --font: "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
+            }
+            * { box-sizing: border-box; }
+            body {
+              background: var(--bg);
+              color: var(--ink);
+              font-family: var(--font);
+              padding-block: 12px 28px;
+              padding-left: max(16px, env(safe-area-inset-left, 0px));
+              padding-right: max(16px, env(safe-area-inset-right, 0px));
+              -webkit-user-select: none;
+              user-select: none;
+              -webkit-touch-callout: none;
+              touch-action: manipulation;
+            }
+            .stage { max-width: 860px; margin: 0 auto; }
+            canvas {
+              display: block;
+              width: 100%;
+              height: auto;
+              max-height: 58vh;
+              object-fit: contain;
+              background: #000;
+              border: 1px solid var(--line);
+              border-radius: 8px;
+            }
+            .pad {
+              direction: ltr;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              gap: 12px;
+              margin-top: 14px;
+            }
+            .grp { display: flex; gap: 10px; }
+            .b {
+              width: 66px;
+              height: 66px;
+              border-radius: 50%;
+              border: 1px solid var(--line);
+              background: var(--btn);
+              color: var(--ink);
+              font-family: var(--font);
+              font-size: 26px;
+              line-height: 1;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 2px;
+              touch-action: none;
+              cursor: pointer;
+              padding: 0;
+            }
+            .b small { font-size: 11px; color: var(--muted); font-weight: 600; }
+            .b.on { background: var(--btn-on); border-color: var(--accent); }
+            .b.big { width: 76px; height: 76px; }
+            .help { margin: 14px 0 0; color: var(--muted); font-size: 13px; text-align: center; text-wrap: balance; }
+
+            /* أفقي على الهاتف: اللعبة تملأ الشاشة والأزرار فوقها */
+            @media (orientation: landscape) and (max-height: 540px) {
+              body { padding-block: 8px; }
+              .stage { max-width: none; }
+              canvas { height: calc(100vh - 16px); max-height: none; }
+              .pad {
+                position: fixed;
+                left: max(16px, env(safe-area-inset-left, 0px));
+                right: max(16px, env(safe-area-inset-right, 0px));
+                bottom: max(12px, env(safe-area-inset-bottom, 0px));
+                margin: 0;
+                pointer-events: none;
+              }
+              .grp { pointer-events: auto; }
+              .b { opacity: 0.6; }
+              .b.on { opacity: 1; }
+              .help { display: none; }
+            }
+          </style>
+
+          <div class="stage">
+            <canvas id="game" aria-label="لعبة ليفاي القديس"></canvas>
+            <div class="pad">
+              <div class="grp">
+                <button class="b big" data-k="left" aria-label="يسار">◀</button>
+                <button class="b big" data-k="right" aria-label="يمين">▶</button>
+              </div>
+              <div class="grp">
+                <button class="b" data-k="magic" aria-label="سحر">✦<small>سحر</small></button>
+                <button class="b" data-k="attack" aria-label="سيف">⚔<small>سيف</small></button>
+                <button class="b big" data-k="jump" aria-label="قفز">⤒<small>قفز</small></button>
+              </div>
+            </div>
+            <p class="help">على الكيبورد: الأسهم أو A و D للحركة، مسافة للقفز، J للسيف، K للسحر. المس الشاشة للبدء.</p>
+          </div>
+
+          <script>
+          (function () {
+            'use strict';
+
+            var cv = document.getElementById('game');
+            var ctx = cv.getContext('2d');
+            var W = 800, H = 450;
+            cv.width = W; cv.height = H;
+
+            var GRAV = 1500, SPEED = 215, JUMP = 590, GROUND_Y = 380;
+
+            // ------------------------------------------------------------ state
+            var state = 'menu';           // menu | play | clear | dead | win
+            var levelIdx = 0, L = null, hero = null;
+            var enemies = [], items = [], projs = [], npcs = [], parts = [], archers = [];
+            var coins = 0, coinsAtStart = 0, time = 0, shake = 0;
+            var dialog = null, dialogT = 0, dialogQ = [];
+            var clearT = 0, winDelay = 0, swingSeq = 0, edmundT = 10, bossIntro = 0;
+            var bossRef = null;
+
+            // ------------------------------------------------------------ input
+            var keys = { left: false, right: false, jump: false, attack: false, magic: false };
+            var input = { jumpP: false, attackP: false, magicP: false };
+            var KEYMAP = {
+              ArrowLeft: 'left', a: 'left', A: 'left',
+              ArrowRight: 'right', d: 'right', D: 'right',
+              ArrowUp: 'jump', w: 'jump', W: 'jump', ' ': 'jump',
+              j: 'attack', J: 'attack', z: 'attack', Z: 'attack',
+              k: 'magic', K: 'magic', x: 'magic', X: 'magic'
+            };
+
+            function setKey(name, down) {
+              if (down && !keys[name]) {
+                if (name === 'jump') input.jumpP = true;
+                if (name === 'attack') input.attackP = true;
+                if (name === 'magic') input.magicP = true;
+              }
+              keys[name] = down;
+              if (down && state !== 'play') startOrRetry();
+            }
+
+            window.addEventListener('keydown', function (e) {
+              var k = KEYMAP[e.key];
+              if (k) { e.preventDefault(); setKey(k, true); }
+              else if (e.key === 'Enter' && state !== 'play') startOrRetry();
+            });
+            window.addEventListener('keyup', function (e) {
+              var k = KEYMAP[e.key];
+              if (k) { e.preventDefault(); setKey(k, false); }
+            });
+            window.addEventListener('blur', function () {
+              for (var k in keys) keys[k] = false;
+            });
+            cv.addEventListener('pointerdown', function () { if (state !== 'play') startOrRetry(); });
+            document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+            Array.prototype.forEach.call(document.querySelectorAll('[data-k]'), function (b) {
+              var k = b.getAttribute('data-k');
+              function down(e) {
+                e.preventDefault();
+                try { b.setPointerCapture(e.pointerId); } catch (_) {}
+                b.classList.add('on');
+                setKey(k, true);
+              }
+              function up(e) {
+                e.preventDefault();
+                b.classList.remove('on');
+                setKey(k, false);
+              }
+              b.addEventListener('pointerdown', down);
+              b.addEventListener('pointerup', up);
+              b.addEventListener('pointercancel', up);
+              b.addEventListener('lostpointercapture', up);
+            });
+
+            // ------------------------------------------------------------ levels
+            function ground(x1, x2) { return { x: x1, y: GROUND_Y, w: x2 - x1, h: 70, g: true }; }
+            function plat(x, y, w) { return { x: x, y: y, w: w, h: 16 }; }
+
+            var rseed = 7;
+            function rnd() { rseed = (rseed * 1664525 + 1013904223) >>> 0; return rseed / 4294967296; }
+            function decor(count, span, minW, maxW, minH, maxH) {
+              var a = [];
+              for (var i = 0; i < count; i++) {
+                a.push({ x: rnd() * span, w: minW + rnd() * (maxW - minW), h: minH + rnd() * (maxH - minH) });
+              }
+              return a;
+            }
+
+            var LEVELS = [
+              {
+                name: 'حدود الاتحادية', width: 2600, theme: 'forest',
+                sky: ['#5fa8e0', '#d3ebf8'], far: '#7ea6c4', gcol: '#4b3a28', gtop: '#6fae45', pcol: '#6b5338',
+                plats: [ground(0, 700), ground(830, 1500), ground(1640, 2600),
+                  plat(480, 290, 120), plat(900, 300, 140), plat(1260, 270, 120), plat(1700, 300, 140), plat(2020, 275, 150)],
+                enemies: [['soldier', 600, GROUND_Y, 480, 690], ['soldier', 1100, GROUND_Y, 880, 1450],
+                  ['slime', 1300, GROUND_Y, 1000, 1480], ['soldier', 1850, GROUND_Y, 1700, 2150],
+                  ['bat', 1500, 200, 1380, 1760], ['soldier', 2300, GROUND_Y, 2100, 2560]],
+                items: [['coin', 500, 262], ['coin', 540, 262], ['coin', 920, 272], ['coin', 960, 272],
+                  ['heart', 1290, 244], ['mana', 1000, 350], ['coin', 1730, 272], ['coin', 2050, 247], ['coin', 2090, 247]],
+                npcs: [{
+                  who: 'edmund', name: 'إيموند', x: 190,
+                  lines: ['إيموند: أنا إيموند يا ليفاي القديس. الاتحادية احتلت أرضنا وأطلقت وحوشها.',
+                    'إيموند: اضرب بالسيف بزر ⚔ وارمِ السحر بزر ✦. وإذا انجرحت اجمع القلوب ♥.',
+                    'إيموند: كمّل لين البوابة اللامعة بآخر المرحلة. بالتوفيق!']
+                }],
+                goal: 2520, start: 60
+              },
+              {
+                name: 'كهوف الوحوش', width: 3000, theme: 'cave',
+                sky: ['#1a1230', '#33255a'], far: '#2d2350', gcol: '#2f2a42', gtop: '#6a5f94', pcol: '#4c4470',
+                plats: [ground(0, 500), ground(620, 1100), ground(1220, 1700), ground(1820, 2300), ground(2420, 3000),
+                  plat(900, 290, 140), plat(1400, 280, 140), plat(2000, 285, 140), plat(2600, 285, 140), plat(1500, 195, 100)],
+                enemies: [['soldier', 800, GROUND_Y, 640, 1090], ['slime', 950, GROUND_Y, 640, 1090],
+                  ['bat', 1000, 200, 800, 1200], ['soldier', 1450, GROUND_Y, 1240, 1690],
+                  ['slime', 1600, GROUND_Y, 1240, 1690], ['bat', 1900, 180, 1700, 2100],
+                  ['soldier', 2050, GROUND_Y, 1840, 2290], ['soldier', 2650, GROUND_Y, 2440, 2990],
+                  ['slime', 2800, GROUND_Y, 2440, 2990], ['bat', 2550, 190, 2400, 2900]],
+                items: [['coin', 920, 262], ['coin', 960, 262], ['heart', 1430, 250], ['coin', 1530, 165],
+                  ['mana', 1300, 350], ['coin', 2030, 255], ['heart', 2630, 255], ['mana', 2500, 350]],
+                npcs: [{
+                  who: 'hilarion', name: 'تيم إيلاريون', x: 150,
+                  lines: ['تيم إيلاريون: نحن تيم إيلاريون، وقفنا ضد الاتحادية من أول يوم.',
+                    'تيم إيلاريون: الكهوف مليانة وحوش. خلّ عينك على الخفافيش وعلى الحفر.',
+                    'تيم إيلاريون: وراء هالكهوف قلعة أبو ميرا. نلتقي هناك ونغطي ظهرك!']
+                }],
+                goal: 2920, start: 60
+              },
+              {
+                name: 'قلعة أبو ميرا', width: 800, theme: 'castle', boss: true,
+                sky: ['#2a0b12', '#6a1c24'], far: '#4a1a22', gcol: '#352026', gtop: '#7e3c3c', pcol: '#5c2e30',
+                plats: [ground(0, 800), plat(40, 285, 150), plat(610, 285, 150)],
+                enemies: [], items: [], npcs: [], goal: 0, start: 370
+              }
+            ];
+            LEVELS.forEach(function (lv) {
+              lv.decorFar = decor(14, lv.width * 0.5 + 800, 140, 320, 90, 200);
+              lv.decorNear = decor(16, lv.width * 0.8 + 800, 26, 70, 60, 150);
+              lv.decorFg = decor(14, lv.width * 1.5 + 800, 40, 120, 30, 90);
+            });
+
+            // ------------------------------------------------------------ helpers
+            function overlap(a, b) {
+              return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+            }
+            function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+            function moveBody(b, dt) {
+              var i, p;
+              b.hitWall = false;
+              b.x += b.vx * dt;
+              for (i = 0; i < L.plats.length; i++) {
+                p = L.plats[i];
+                if (overlap(b, p)) {
+                  if (b.vx > 0) b.x = p.x - b.w; else if (b.vx < 0) b.x = p.x + p.w;
+                  b.hitWall = true;
+                }
+              }
+              if (b.x < 0) { b.x = 0; b.hitWall = true; }
+              if (b.x + b.w > L.width) { b.x = L.width - b.w; b.hitWall = true; }
+              b.y += b.vy * dt;
+              b.onGround = false;
+              b.stand = null;
+              for (i = 0; i < L.plats.length; i++) {
+                p = L.plats[i];
+                if (overlap(b, p)) {
+                  if (b.vy > 0) { b.y = p.y - b.h; b.vy = 0; b.onGround = true; b.stand = p; }
+                  else if (b.vy < 0) { b.y = p.y + p.h; b.vy = 0; }
+                }
+              }
+            }
+
+            function burst(x, y, n, color) {
+              for (var i = 0; i < n; i++) {
+                parts.push({
+                  x: x, y: y, vx: (Math.random() - 0.5) * 260, vy: -Math.random() * 220 - 40,
+                  life: 0.5 + Math.random() * 0.4, c: color, s: 2 + Math.random() * 3
+                });
+              }
+            }
+
+            function say(text, color) {
+              dialogQ.push({ text: text, color: color || '#ffd36e' });
+            }
+
+            // ------------------------------------------------------------ level setup
+            function spawnEnemy(t, x, gy, minX, maxX) {
+              var def = {
+                soldier: { w: 26, h: 40, hp: 3 },
+                slime: { w: 28, h: 20, hp: 2 },
+                bat: { w: 28, h: 18, hp: 1 }
+              }[t];
+              var e = {
+                t: t, x: x, w: def.w, h: def.h, hp: def.hp, maxHp: def.hp, vx: 0, vy: 0,
+                minX: minX, maxX: maxX, dir: -1, hurt: 0, timer: Math.random() * 1.5,
+                onGround: false, baseY: gy, lastSwing: -1, dead: false
+              };
+              e.y = (t === 'bat') ? gy : gy - def.h;
+              return e;
+            }
+
+            function spawnBoss() {
+              var b = {
+                t: 'boss', x: 620, y: GROUND_Y - 112, w: 84, h: 112, hp: 36, maxHp: 36,
+                vx: 0, vy: 0, minX: 0, maxX: 800, dir: -1, hurt: 0, timer: 1.4,
+                onGround: false, lastSwing: -1, dead: false, state: 'idle', cdir: -1,
+                shots: 0, shotT: 0, summoned: false
+              };
+              enemies.push(b);
+              bossRef = b;
+            }
+
+            function startLevel(i, carryHp) {
+              levelIdx = i;
+              L = LEVELS[i];
+              enemies = []; items = []; projs = []; npcs = []; parts = []; archers = [];
+              dialog = null; dialogQ = []; bossRef = null;
+              winDelay = 0; edmundT = 10; bossIntro = 0;
+              hero = {
+                x: L.start, y: GROUND_Y - 40, w: 24, h: 40, vx: 0, vy: 0, facing: 1,
+                hp: carryHp || 5, maxHp: 5, mana: 3, onGround: false, coyote: 0,
+                swing: 0, swingId: 0, attackCd: 0, invul: 0, hurtT: 0, castT: 0, manaT: 0,
+                stand: null, safe: { x: L.start, y: GROUND_Y - 40 }
+              };
+              (L.enemies || []).forEach(function (d) {
+                enemies.push(spawnEnemy(d[0], d[1], d[2], d[3], d[4]));
+              });
+              (L.items || []).forEach(function (d) {
+                items.push({ t: d[0], x: d[1], y: d[2], w: 16, h: 16, vy: 0, falling: false });
+              });
+              (L.npcs || []).forEach(function (n) {
+                npcs.push({ who: n.who, name: n.name, x: n.x, y: GROUND_Y - 40, lines: n.lines, done: false });
+              });
+              if (L.boss) {
+                spawnBoss();
+                var ay = 285 - 34;
+                archers = [
+                  { x: 56, y: ay, t: 1.2 }, { x: 96, y: ay, t: 2.1 }, { x: 136, y: ay, t: 3.0 }
+                ];
+                npcs.push({ who: 'edmund', name: 'إيموند', x: 700, y: 285 - 40, lines: [], done: true });
+                say('أبو ميرا: وصلت أخيراً يا ليفاي القديس؟ هذي نهايتك!', '#ff8a7a');
+                say('إيموند: لا تخاف يا ليفاي! تيم إيلاريون يغطيك بالسهام، وأنا أرسل لك القلوب.', '#ffd36e');
+                bossIntro = 1;
+              }
+              state = 'play';
+            }
+
+            function startOrRetry() {
+              if (state === 'menu') { coins = 0; coinsAtStart = 0; startLevel(0); }
+              else if (state === 'dead') { coins = coinsAtStart; startLevel(levelIdx); }
+              else if (state === 'win') { state = 'menu'; }
+            }
+
+            function nextLevel() {
+              var carry = Math.min(5, hero.hp + 2);
+              if (levelIdx + 1 >= LEVELS.length) { state = 'win'; return; }
+              coinsAtStart = coins;
+              startLevel(levelIdx + 1, carry);
+            }
+
+            // ------------------------------------------------------------ combat
+            function hurtHero(d, fromX) {
+              if (hero.invul > 0 || state !== 'play' || winDelay > 0) return;
+              hero.hp -= d;
+              hero.invul = 1.2;
+              hero.hurtT = 0.25;
+              hero.vy = -260;
+              hero.vx = (hero.x + hero.w / 2 < fromX ? -1 : 1) * 200;
+              shake = 0.25;
+              burst(hero.x + 12, hero.y + 16, 8, '#d9534f');
+              if (hero.hp <= 0) { hero.hp = 0; state = 'dead'; }
+            }
+
+            function damageEnemy(e, dmg, dir) {
+              if (e.dead) return;
+              e.hp -= dmg;
+              e.hurt = 0.22;
+              if (e.t !== 'bat' && e.t !== 'boss') e.vx = dir * 180;
+              burst(e.x + e.w / 2, e.y + e.h / 2, 6, '#ffffff');
+              if (e.hp <= 0) {
+                e.dead = true;
+                burst(e.x + e.w / 2, e.y + e.h / 2, e.t === 'boss' ? 40 : 14, e.t === 'boss' ? '#ff9a4a' : '#cfd6df');
+                if (e.t === 'boss') {
+                  winDelay = 2.2;
+                  hero.invul = 99;
+                  projs = [];
+                  enemies.forEach(function (o) { if (o !== e) o.dead = true; });
+                  shake = 0.6;
+                } else {
+                  if (Math.random() < 0.5) coins += 1;
+                  if (Math.random() < 0.15) {
+                    items.push({ t: 'heart', x: e.x + e.w / 2 - 8, y: e.y, w: 16, h: 16, vy: -200, falling: true });
+                  }
+                }
+              }
+            }
+
+            function swordBox() {
+              return {
+                x: hero.facing > 0 ? hero.x + hero.w - 2 : hero.x - 36,
+                y: hero.y + 4, w: 38, h: 30
+              };
+            }
+
+            function addProj(o) { projs.push(o); }
+
+            // ------------------------------------------------------------ updates
+            function updateHero(dt) {
+              var h = hero;
+              if (h.invul > 0) h.invul -= dt;
+              if (h.hurtT > 0) h.hurtT -= dt;
+              if (h.attackCd > 0) h.attackCd -= dt;
+              if (h.castT > 0) h.castT -= dt;
+
+              var dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+              if (h.hurtT <= 0) {
+                h.vx = dir * SPEED;
+                if (dir) h.facing = dir;
+              }
+              if (h.onGround) h.coyote = 0.1; else h.coyote -= dt;
+              if (input.jumpP) {
+                if (h.coyote > 0 && h.hurtT <= 0) { h.vy = -JUMP; h.coyote = 0; }
+                input.jumpP = false;
+              }
+              if (input.attackP) {
+                if (h.attackCd <= 0) {
+                  h.swing = 0.18; h.attackCd = 0.34; h.swingId = ++swingSeq;
+                }
+                input.attackP = false;
+              }
+              if (input.magicP) {
+                if (h.mana >= 1) {
+                  h.mana -= 1; h.castT = 0.2;
+                  addProj({
+                    kind: 'fire', from: 'hero', x: h.x + h.w / 2 + h.facing * 14, y: h.y + 18,
+                    vx: h.facing * 430, vy: 0, r: 8, dmg: 2, life: 1.6
+                  });
+                }
+                input.magicP = false;
+              }
+              if (h.mana < 3) {
+                h.manaT += dt;
+                if (h.manaT >= 6) { h.mana += 1; h.manaT = 0; }
+              }
+
+              h.vy += GRAV * dt;
+              if (h.vy > 900) h.vy = 900;
+              moveBody(h, dt);
+
+              if (h.onGround && h.stand && h.stand.g) {
+                h.safe = {
+                  x: clamp(h.x, h.stand.x + 30, h.stand.x + h.stand.w - 54),
+                  y: h.stand.y - h.h
+                };
+              }
+
+              if (h.swing > 0) {
+                h.swing -= dt;
+                var sb = swordBox();
+                enemies.forEach(function (e) {
+                  if (!e.dead && e.lastSwing !== h.swingId && overlap(sb, e)) {
+                    e.lastSwing = h.swingId;
+                    damageEnemy(e, 1, h.facing);
+                  }
+                });
+              }
+
+              if (h.y > H + 60) {
+                if (state === 'play') {
+                  h.hp -= 1;
+                  if (h.hp <= 0) { h.hp = 0; state = 'dead'; }
+                  else {
+                    h.x = h.safe.x; h.y = h.safe.y; h.vx = 0; h.vy = 0; h.invul = 1.5;
+                    shake = 0.2;
+                  }
+                }
+              }
+            }
+
+            function updateBoss(e, dt) {
+              var dx = (hero.x + hero.w / 2) - (e.x + e.w / 2);
+              var toward = dx > 0 ? 1 : -1;
+              var rage = e.hp <= e.maxHp / 2 ? 1.25 : 1;
+              e.timer -= dt;
+              e.vy += GRAV * dt;
+
+              if (!e.summoned && e.hp <= e.maxHp / 2) {
+                e.summoned = true;
+                enemies.push(spawnEnemy('soldier', 160, GROUND_Y, 80, 560));
+                enemies.push(spawnEnemy('slime', 440, GROUND_Y, 200, 760));
+                burst(160, 340, 10, '#b3262b');
+                say('أبو ميرا: يا جنود الاتحادية، تعالوا!', '#ff8a7a');
+              }
+
+              if (e.state === 'idle') {
+                e.vx = 0;
+                if (e.timer <= 0) {
+                  var r = Math.random();
+                  if (r < 0.34) { e.state = 'charge'; e.timer = 1.1; e.cdir = toward; }
+                  else if (r < 0.67) { e.state = 'jump'; e.timer = 2; e.vy = -720; e.vx = toward * 130; }
+                  else { e.state = 'throw'; e.timer = 1.1; e.shots = 3; e.shotT = 0.2; }
+                }
+              } else if (e.state === 'charge') {
+                e.vx = e.cdir * 300 * rage;
+                if (e.timer <= 0 || e.hitWall) { e.state = 'idle'; e.timer = 1.0 / rage; e.vx = 0; }
+              } else if (e.state === 'jump') {
+                if (e.onGround && e.timer < 1.8) {
+                  addProj({ kind: 'wave', from: 'enemy', x: e.x + e.w, y: GROUND_Y - 26, w: 26, h: 26, vx: 260, vy: 0, life: 2.4, r: 0, dmg: 1 });
+                  addProj({ kind: 'wave', from: 'enemy', x: e.x - 26, y: GROUND_Y - 26, w: 26, h: 26, vx: -260, vy: 0, life: 2.4, r: 0, dmg: 1 });
+                  shake = 0.35;
+                  e.state = 'idle'; e.timer = 1.0 / rage; e.vx = 0;
+                }
+              } else if (e.state === 'throw') {
+                e.vx = 0;
+                e.shotT -= dt;
+                if (e.shotT <= 0 && e.shots > 0) {
+                  var sx = e.x + e.w / 2, sy = e.y + 30;
+                  var tx = hero.x + hero.w / 2, ty = hero.y + 16;
+                  var d = Math.max(1, Math.sqrt((tx - sx) * (tx - sx) + (ty - sy) * (ty - sy)));
+                  addProj({ kind: 'orb', from: 'enemy', x: sx, y: sy, vx: (tx - sx) / d * 300, vy: (ty - sy) / d * 300, r: 9, dmg: 1, life: 3 });
+                  e.shots -= 1; e.shotT = 0.32;
+                }
+                if (e.timer <= 0 && e.shots <= 0) { e.state = 'idle'; e.timer = 1.0 / rage; }
+              }
+              moveBody(e, dt);
+              e.facing = toward;
+            }
+
+            function updateEnemy(e, dt) {
+              if (e.hurt > 0) e.hurt -= dt;
+              if (e.t === 'boss') { updateBoss(e, dt); return; }
+              if (e.t === 'soldier') {
+                e.vy += GRAV * dt;
+                if (e.hurt <= 0) e.vx = e.dir * 60;
+                if (e.x <= e.minX) e.dir = 1;
+                if (e.x + e.w >= e.maxX) e.dir = -1;
+                moveBody(e, dt);
+                if (e.hitWall) e.dir *= -1;
+              } else if (e.t === 'slime') {
+                e.vy += GRAV * dt;
+                e.timer -= dt;
+                if (e.onGround) {
+                  e.vx *= 0.8;
+                  if (e.timer <= 0 && e.hurt <= 0) {
+                    e.vy = -330;
+                    e.dir = hero.x < e.x ? -1 : 1;
+                    e.vx = e.dir * 95;
+                    e.timer = 1.1 + Math.random() * 0.8;
+                  }
+                }
+                moveBody(e, dt);
+                if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
+                if (e.x + e.w > e.maxX) { e.x = e.maxX - e.w; e.vx = -Math.abs(e.vx); }
+              } else if (e.t === 'bat') {
+                e.timer += dt;
+                e.x += e.dir * 70 * dt;
+                e.y = e.baseY + Math.sin(e.timer * 3) * 28;
+                if (e.x < e.minX) e.dir = 1;
+                if (e.x > e.maxX) e.dir = -1;
+              }
+            }
+
+            function updateProjs(dt) {
+              projs.forEach(function (p) {
+                var box, i;
+                p.life -= dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                if (p.kind === 'wave') box = { x: p.x, y: p.y, w: p.w, h: p.h };
+                else box = { x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 };
+
+                if (p.from === 'hero' || p.from === 'ally') {
+                  for (i = 0; i < enemies.length; i++) {
+                    var e = enemies[i];
+                    if (!e.dead && overlap(box, e)) {
+                      damageEnemy(e, p.dmg, p.vx > 0 ? 1 : -1);
+                      p.life = 0;
+                      break;
+                    }
+                  }
+                } else if (p.from === 'enemy') {
+                  if (overlap(box, hero)) {
+                    hurtHero(p.dmg, p.x);
+                    if (p.kind !== 'wave') p.life = 0;
+                  }
+                }
+                if (p.kind !== 'wave' && p.life > 0) {
+                  for (i = 0; i < L.plats.length; i++) {
+                    if (overlap(box, L.plats[i])) { p.life = 0; burst(p.x, p.y, 4, '#ffffff'); break; }
+                  }
+                }
+              });
+              projs = projs.filter(function (p) { return p.life > 0 && p.x > -60 && p.x < L.width + 60; });
+            }
+
+            function updateItems(dt) {
+              items.forEach(function (it) {
+                if (it.falling) {
+                  it.vy += GRAV * 0.6 * dt;
+                  var b = { x: it.x, y: it.y, w: it.w, h: it.h, vx: 0, vy: it.vy };
+                  moveBody(b, dt);
+                  it.y = b.y; it.vy = b.vy;
+                  if (b.onGround) it.falling = false;
+                }
+                if (!it.got && overlap(hero, it)) {
+                  it.got = true;
+                  if (it.t === 'coin') coins += 1;
+                  else if (it.t === 'heart') hero.hp = Math.min(hero.maxHp, hero.hp + 1);
+                  else if (it.t === 'mana') hero.mana = Math.min(3, hero.mana + 1);
+                  burst(it.x + 8, it.y + 8, 6, it.t === 'heart' ? '#ff5d73' : it.t === 'mana' ? '#6fc3ff' : '#ffd23f');
+                }
+              });
+              items = items.filter(function (it) { return !it.got && it.y < H + 80; });
+            }
+
+            function updateAllies(dt) {
+              var boss = bossRef && !bossRef.dead ? bossRef : null;
+              archers.forEach(function (a) {
+                a.t -= dt;
+                if (a.t <= 0 && boss) {
+                  var sx = a.x + 12, sy = a.y + 14;
+                  var tx = boss.x + boss.w / 2, ty = boss.y + boss.h / 2;
+                  var d = Math.max(1, Math.sqrt((tx - sx) * (tx - sx) + (ty - sy) * (ty - sy)));
+                  addProj({ kind: 'arrow', from: 'ally', x: sx, y: sy, vx: (tx - sx) / d * 520, vy: (ty - sy) / d * 520, r: 5, dmg: 1, life: 2 });
+                  a.t = 2.4 + Math.random();
+                }
+              });
+              if (L.boss && boss) {
+                edmundT -= dt;
+                if (edmundT <= 0) {
+                  items.push({ t: 'heart', x: 150 + Math.random() * 500, y: -20, w: 16, h: 16, vy: 0, falling: true });
+                  edmundT = 14;
+                }
+              }
+              npcs.forEach(function (n) {
+                if (!n.done && Math.abs((hero.x + 12) - (n.x + 11)) < 110) {
+                  n.done = true;
+                  n.lines.forEach(function (t) { say(t, n.who === 'edmund' ? '#8fc5ff' : '#9be58a'); });
+                }
+              });
+            }
+
+            function updateDialog(dt) {
+              if (dialog) { dialogT -= dt; if (dialogT <= 0) dialog = null; }
+              if (!dialog && dialogQ.length) { dialog = dialogQ.shift(); dialogT = 3.6; }
+            }
+
+            function updateParts(dt) {
+              parts.forEach(function (p) {
+                p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 700 * dt;
+              });
+              parts = parts.filter(function (p) { return p.life > 0; });
+            }
+
+            function updatePlay(dt) {
+              updateHero(dt);
+              if (state !== 'play') return;
+              enemies.forEach(function (e) {
+                if (!e.dead) updateEnemy(e, dt);
+              });
+              enemies.forEach(function (e) {
+                if (!e.dead && overlap(hero, e)) hurtHero(1, e.x + e.w / 2);
+              });
+              enemies = enemies.filter(function (e) { return !e.dead; });
+              updateProjs(dt);
+              updateItems(dt);
+              updateAllies(dt);
+              if (L.goal && overlap(hero, { x: L.goal, y: 290, w: 40, h: 90 })) {
+                state = 'clear'; clearT = 1.8;
+              }
+            }
+
+            function update(dt) {
+              time += dt;
+              if (shake > 0) shake -= dt;
+              updateParts(dt);
+              updateDialog(dt);
+              if (state === 'play') {
+                updatePlay(dt);
+                if (winDelay > 0) {
+                  winDelay -= dt;
+                  if (winDelay <= 0) state = 'win';
+                }
+              } else if (state === 'clear') {
+                clearT -= dt;
+                if (clearT <= 0) nextLevel();
+              }
+            }
+
+            // ------------------------------------------------------------ drawing
+            function wrap(text, maxW) {
+              var words = text.split(' '), lines = [], cur = '';
+              words.forEach(function (w) {
+                var t = cur ? cur + ' ' + w : w;
+                if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+              });
+              if (cur) lines.push(cur);
+              return lines;
+            }
+
+            function centerText(text, x, y, font, color) {
+              ctx.font = font; ctx.fillStyle = color; ctx.textAlign = 'center';
+              ctx.fillText(text, x, y);
+            }
+
+            function drawBackground(cam) {
+              var g = ctx.createLinearGradient(0, 0, 0, H);
+              g.addColorStop(0, L.sky[0]); g.addColorStop(1, L.sky[1]);
+              ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+              ctx.fillStyle = L.far;
+              L.decorFar.forEach(function (d) {
+                var x = d.x - cam * 0.25 - 100;
+                ctx.beginPath();
+                ctx.moveTo(x, GROUND_Y); ctx.lineTo(x + d.w / 2, GROUND_Y - d.h); ctx.lineTo(x + d.w, GROUND_Y);
+                ctx.fill();
+              });
+
+              if (L.theme === 'forest') {
+                L.decorNear.forEach(function (d) {
+                  var x = d.x - cam * 0.6 - 60;
+                  ctx.fillStyle = '#4a3624'; ctx.fillRect(x + d.w / 2 - 4, GROUND_Y - d.h * 0.5, 8, d.h * 0.5);
+                  ctx.fillStyle = '#2f6b34';
+                  ctx.beginPath();
+                  ctx.moveTo(x, GROUND_Y - d.h * 0.4); ctx.lineTo(x + d.w / 2, GROUND_Y - d.h - 20); ctx.lineTo(x + d.w, GROUND_Y - d.h * 0.4);
+                  ctx.fill();
+                });
+              } else if (L.theme === 'cave') {
+                ctx.fillStyle = '#241b40';
+                L.decorNear.forEach(function (d) {
+                  var x = d.x - cam * 0.5 - 60;
+                  ctx.beginPath();
+                  ctx.moveTo(x, 0); ctx.lineTo(x + d.w / 2, d.h); ctx.lineTo(x + d.w, 0);
+                  ctx.fill();
+                });
+              } else {
+                L.decorNear.forEach(function (d, i) {
+                  var x = (i * 53) % 800;
+                  ctx.fillStyle = 'rgba(255,140,60,0.12)';
+                  ctx.beginPath(); ctx.arc(x, 80 + (i * 37) % 200, 24 + (i % 4) * 8, 0, Math.PI * 2); ctx.fill();
+                });
+                ctx.fillStyle = '#3d1820';
+                [120, 400, 680].forEach(function (x) { ctx.fillRect(x - 18, 0, 36, GROUND_Y); });
+              }
+            }
+
+            // 2.5D: كل منصة مجسم له وجه أمامي وسطح علوي وجانب، والشخصيات تمشي على عمق المنصة
+            var DX = 14, DY = 12, LANE = -6;
+
+            function shade(hex, f) {
+              var n = parseInt(hex.slice(1), 16);
+              var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+              return 'rgb(' + r + ',' + g + ',' + b + ')';
+            }
+
+            function drawBox(x, y, w, h, front, top) {
+              ctx.fillStyle = shade(front, 0.55);
+              ctx.beginPath();
+              ctx.moveTo(x + w, y); ctx.lineTo(x + w + DX, y - DY); ctx.lineTo(x + w + DX, y + h - DY); ctx.lineTo(x + w, y + h);
+              ctx.closePath(); ctx.fill();
+              ctx.fillStyle = top;
+              ctx.beginPath();
+              ctx.moveTo(x, y); ctx.lineTo(x + DX, y - DY); ctx.lineTo(x + w + DX, y - DY); ctx.lineTo(x + w, y);
+              ctx.closePath(); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,0.14)';
+              ctx.beginPath();
+              ctx.moveTo(x + DX, y - DY); ctx.lineTo(x + w + DX, y - DY); ctx.lineTo(x + w + DX - 3, y - DY + 3); ctx.lineTo(x + DX + 3, y - DY + 3);
+              ctx.closePath(); ctx.fill();
+              ctx.fillStyle = front;
+              ctx.fillRect(x, y, w, h);
+              ctx.fillStyle = 'rgba(255,255,255,0.16)';
+              ctx.fillRect(x, y, w, 2);
+            }
+
+            function drawPlatforms(cam) {
+              L.plats.forEach(function (p) {
+                var x = p.x - cam;
+                if (x > W + 20 || x + p.w < -20) return;
+                drawBox(x, p.y, p.w, p.h, p.g ? L.gcol : L.pcol, L.gtop);
+                if (p.g) {
+                  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+                  for (var yy = p.y + 24; yy < p.y + p.h; yy += 22) ctx.fillRect(x, yy, p.w, 2);
+                }
+              });
+            }
+
+            function surfaceBelow(e) {
+              var best = null, feet = e.y + e.h;
+              L.plats.forEach(function (p) {
+                if (e.x + e.w > p.x && e.x < p.x + p.w && p.y >= feet - 2 && (best === null || p.y < best)) best = p.y;
+              });
+              return best;
+            }
+
+            function drawShadows(cam) {
+              enemies.concat([hero]).forEach(function (e) {
+                if (e.dead) return;
+                var sy = surfaceBelow(e);
+                if (sy === null) return;
+                var k = Math.max(0.35, 1 - (sy - (e.y + e.h)) / 280);
+                ctx.fillStyle = 'rgba(0,0,0,' + (0.34 * k) + ')';
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w / 2 - cam, sy, e.w * 0.62 * k, 4.5 * k, 0, 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
+
+            function drawForeground(cam) {
+              ctx.fillStyle = 'rgba(4,6,10,0.66)';
+              if (L.theme === 'castle') {
+                ctx.fillRect(0, 0, 30, H);
+                ctx.fillRect(W - 30, 0, 30, H);
+                return;
+              }
+              L.decorFg.forEach(function (d) {
+                var x = d.x - cam * 1.4 - 120;
+                if (x > W + 60 || x + d.w < -60) return;
+                ctx.beginPath();
+                if (L.theme === 'forest') {
+                  ctx.ellipse(x + d.w / 2, H + 6, d.w * 0.7, d.h * 0.5, 0, Math.PI, 0);
+                } else {
+                  ctx.moveTo(x, H); ctx.lineTo(x + d.w / 2, H - d.h * 0.7); ctx.lineTo(x + d.w, H);
+                }
+                ctx.fill();
+              });
+            }
+
+            function drawVignette() {
+              var g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.75);
+              g.addColorStop(0, 'rgba(0,0,0,0)');
+              g.addColorStop(1, 'rgba(0,0,0,0.45)');
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, W, H);
+            }
+
+            function drawItems(cam) {
+              items.forEach(function (it) {
+                var x = it.x - cam, y = it.y + Math.sin(time * 4 + it.x) * 2;
+                if (it.t === 'coin') {
+                  ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x + 8, y + 8, 7, 0, Math.PI * 2); ctx.fill();
+                  ctx.fillStyle = '#c99a12'; ctx.beginPath(); ctx.arc(x + 8, y + 8, 3, 0, Math.PI * 2); ctx.fill();
+                } else if (it.t === 'heart') {
+                  ctx.font = '22px sans-serif'; ctx.fillStyle = '#ff5d73'; ctx.textAlign = 'center';
+                  ctx.fillText('♥', x + 8, y + 18);
+                } else {
+                  ctx.fillStyle = '#6fc3ff';
+                  ctx.beginPath();
+                  ctx.moveTo(x + 8, y); ctx.lineTo(x + 15, y + 8); ctx.lineTo(x + 8, y + 17); ctx.lineTo(x + 1, y + 8);
+                  ctx.fill();
+                }
+              });
+            }
+
+            function drawGoal(cam) {
+              if (!L.goal) return;
+              var x = L.goal - cam;
+              var g = ctx.createLinearGradient(x, 290, x + 40, 290);
+              g.addColorStop(0, 'rgba(120,200,255,0.1)'); g.addColorStop(0.5, 'rgba(180,230,255,0.85)'); g.addColorStop(1, 'rgba(120,200,255,0.1)');
+              ctx.fillStyle = g;
+              ctx.fillRect(x, 290, 40, 90);
+              ctx.strokeStyle = '#dff3ff'; ctx.lineWidth = 3;
+              ctx.strokeRect(x - 2, 288, 44, 94);
+            }
+
+            function nameTag(text, cx, y, color) {
+              ctx.font = '700 12px Cairo, sans-serif'; ctx.fillStyle = color; ctx.textAlign = 'center';
+              ctx.fillText(text, cx, y);
+            }
+
+            function drawEdmund(n, cam) {
+              var x = n.x - cam, y = n.y;
+              ctx.fillStyle = '#2f5fa8'; ctx.fillRect(x, y + 14, 22, 26);
+              ctx.fillStyle = '#244a85'; ctx.fillRect(x, y + 34, 22, 6);
+              ctx.fillStyle = '#f1c9a0'; ctx.beginPath(); ctx.arc(x + 11, y + 9, 8, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#6b4423'; ctx.beginPath(); ctx.arc(x + 11, y + 7, 9, Math.PI, 0); ctx.fill();
+              ctx.fillStyle = '#7b5a2a'; ctx.fillRect(x + 25, y + 6, 3, 34);
+              ctx.fillStyle = '#8fd0ff'; ctx.beginPath(); ctx.arc(x + 26.5, y + 5, 5, 0, Math.PI * 2); ctx.fill();
+              nameTag(n.name, x + 11, y - 6, '#8fc5ff');
+            }
+
+            function drawArcher(a, cam) {
+              var x = a.x - cam, y = a.y;
+              ctx.fillStyle = '#2f7a3a'; ctx.fillRect(x, y + 12, 22, 22);
+              ctx.fillStyle = '#245f2d'; ctx.beginPath(); ctx.arc(x + 11, y + 9, 10, Math.PI, 0); ctx.fill();
+              ctx.fillStyle = '#f1c9a0'; ctx.fillRect(x + 6, y + 6, 10, 7);
+              ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(x + 24, y + 18, 11, -1.2, 1.2); ctx.stroke();
+            }
+
+            function drawNpcs(cam) {
+              npcs.forEach(function (n) {
+                if (n.who === 'edmund') drawEdmund(n, cam);
+                else {
+                  // team of three at a time
+                  for (var i = 0; i < 3; i++) drawArcher({ x: n.x + i * 34, y: n.y + 6 }, cam);
+                  nameTag(n.name, n.x - cam + 40, n.y - 4, '#9be58a');
+                }
+              });
+              archers.forEach(function (a) { drawArcher(a, cam); });
+              if (archers.length) nameTag('تيم إيلاريون', 96 - cam + 12, 285 - 44, '#9be58a');
+            }
+
+            function drawSoldier(e, cam) {
+              var x = e.x - cam, y = e.y, f = e.dir;
+              ctx.save(); ctx.translate(x + e.w / 2, y); ctx.scale(f, 1);
+              ctx.fillStyle = '#8a919c'; ctx.fillRect(-12, 14, 24, 20);
+              ctx.fillStyle = '#b3262b'; ctx.fillRect(-4, 18, 8, 8);
+              ctx.fillStyle = '#5c636e'; ctx.fillRect(-10, 32, 8, 8); ctx.fillRect(2, 32, 8, 8);
+              ctx.fillStyle = '#f1c9a0'; ctx.fillRect(-5, 8, 10, 7);
+              ctx.fillStyle = '#5c636e'; ctx.beginPath(); ctx.arc(0, 8, 9, Math.PI, 0); ctx.fill();
+              ctx.fillStyle = '#c8ced6'; ctx.fillRect(12, 6, 3, 30);
+              ctx.restore();
+              if (e.hurt > 0) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x, y, e.w, e.h); }
+            }
+
+            function drawSlime(e, cam) {
+              var x = e.x - cam, y = e.y;
+              ctx.fillStyle = e.hurt > 0 ? '#e8ffe8' : '#52c25a';
+              ctx.beginPath(); ctx.ellipse(x + 14, y + 12, 15, 11, 0, Math.PI, 0); ctx.fillRect(x - 1, y + 12, 30, 8); ctx.fill();
+              ctx.fillStyle = '#10301a'; ctx.fillRect(x + 7, y + 7, 4, 5); ctx.fillRect(x + 17, y + 7, 4, 5);
+            }
+
+            function drawBat(e, cam) {
+              var x = e.x - cam, y = e.y, fl = Math.sin(time * 18) * 7;
+              ctx.fillStyle = e.hurt > 0 ? '#fff' : '#7b4fb0';
+              ctx.beginPath(); ctx.ellipse(x + 14, y + 9, 7, 8, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(x + 8, y + 7); ctx.lineTo(x - 8, y + fl); ctx.lineTo(x + 6, y + 14); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(x + 20, y + 7); ctx.lineTo(x + 36, y + fl); ctx.lineTo(x + 22, y + 14); ctx.fill();
+              ctx.fillStyle = '#ffec6e'; ctx.fillRect(x + 11, y + 6, 2, 2); ctx.fillRect(x + 16, y + 6, 2, 2);
+            }
+
+            function drawBoss(e, cam) {
+              var x = e.x - cam, y = e.y, f = e.facing || -1;
+              var lean = e.state === 'charge' ? 8 * f : 0;
+              ctx.save(); ctx.translate(x + e.w / 2, y); ctx.scale(f, 1);
+              var body = e.hurt > 0 ? '#ffd7d0' : '#7a1d1d';
+              ctx.fillStyle = body; ctx.fillRect(-34 + lean, 36, 68, 56);
+              ctx.fillStyle = e.hurt > 0 ? '#ffd7d0' : '#5c1414';
+              ctx.fillRect(-28, 90, 22, 22); ctx.fillRect(6, 90, 22, 22);
+              ctx.fillStyle = body; ctx.beginPath(); ctx.arc(lean, 28, 26, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#f2ead8';
+              ctx.beginPath(); ctx.moveTo(-22 + lean, 12); ctx.lineTo(-34 + lean, -14); ctx.lineTo(-10 + lean, 6); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(22 + lean, 12); ctx.lineTo(34 + lean, -14); ctx.lineTo(10 + lean, 6); ctx.fill();
+              ctx.fillStyle = '#e0b04a'; ctx.fillRect(-14 + lean, 4, 28, 8);
+              ctx.fillRect(-14 + lean, -4, 6, 8); ctx.fillRect(-3 + lean, -6, 6, 10); ctx.fillRect(8 + lean, -4, 6, 8);
+              ctx.fillStyle = '#ffd23f'; ctx.fillRect(4 + lean, 24, 9, 6); ctx.fillRect(-13 + lean, 24, 9, 6);
+              ctx.fillStyle = '#2b0a0a'; ctx.fillRect(-12 + lean, 40, 24, 4);
+              ctx.restore();
+            }
+
+            function drawEnemies(cam) {
+              enemies.forEach(function (e) {
+                if (e.t === 'soldier') drawSoldier(e, cam);
+                else if (e.t === 'slime') drawSlime(e, cam);
+                else if (e.t === 'bat') drawBat(e, cam);
+                else if (e.t === 'boss') drawBoss(e, cam);
+              });
+            }
+
+            function drawHero(cam) {
+              var h = hero;
+              if (h.invul > 0 && h.invul < 50 && Math.floor(time * 20) % 2 === 0) return;
+              var cx = h.x + h.w / 2 - cam;
+              var step = (h.onGround && Math.abs(h.vx) > 10) ? Math.sin(time * 16) * 4 : 0;
+              ctx.save(); ctx.translate(cx, h.y); ctx.scale(h.facing, 1);
+              // black outfit
+              ctx.fillStyle = '#12141a'; ctx.fillRect(-10, 15, 20, 17);
+              ctx.fillStyle = '#c9a24b'; ctx.fillRect(-10, 27, 20, 3);
+              ctx.fillStyle = '#12141a';
+              ctx.fillRect(-9 + step, 31, 8, 9); ctx.fillRect(1 - step, 31, 8, 9);
+              ctx.fillStyle = '#3a3f4a';
+              ctx.fillRect(-9 + step, 38, 9, 2); ctx.fillRect(1 - step, 38, 9, 2);
+              // head, white hair
+              ctx.fillStyle = '#f1c9a0'; ctx.beginPath(); ctx.arc(0, 9, 8, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#f4f6fa';
+              ctx.beginPath(); ctx.arc(0, 7, 9.5, Math.PI, 0); ctx.fill();
+              ctx.fillRect(-9, 6, 4, 9); ctx.fillRect(5, 5, 4, 7);
+              ctx.fillStyle = '#1a1a1a'; ctx.fillRect(3, 8, 2, 3);
+              // sword
+              if (h.swing > 0) {
+                var s = 1 - h.swing / 0.18;
+                var ang = -0.9 + s * 2.5;
+                ctx.save(); ctx.translate(8, 20); ctx.rotate(ang);
+                ctx.fillStyle = '#dfe6ee'; ctx.fillRect(-2, -34, 5, 34);
+                ctx.fillStyle = '#c9a24b'; ctx.fillRect(-6, -2, 13, 4);
+                ctx.restore();
+                ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(8, 20, 34, -0.9 - Math.PI / 2, ang - Math.PI / 2); ctx.stroke();
+              } else {
+                ctx.fillStyle = '#dfe6ee'; ctx.fillRect(9, 14, 3, 22);
+                ctx.fillStyle = '#c9a24b'; ctx.fillRect(6, 24, 9, 3);
+              }
+              if (h.castT > 0) {
+                ctx.fillStyle = 'rgba(255,170,70,0.8)'; ctx.beginPath(); ctx.arc(18, 20, 8, 0, Math.PI * 2); ctx.fill();
+              }
+              ctx.restore();
+            }
+
+            function drawProjs(cam) {
+              projs.forEach(function (p) {
+                var x = p.x - cam;
+                if (p.kind === 'fire') {
+                  ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+                  ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(x, p.y, p.r * 0.5, 0, Math.PI * 2); ctx.fill();
+                } else if (p.kind === 'orb') {
+                  ctx.fillStyle = '#c04bff'; ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+                  ctx.fillStyle = '#f0c8ff'; ctx.beginPath(); ctx.arc(x, p.y, p.r * 0.45, 0, Math.PI * 2); ctx.fill();
+                } else if (p.kind === 'arrow') {
+                  ctx.strokeStyle = '#e6d9b8'; ctx.lineWidth = 3;
+                  var a = Math.atan2(p.vy, p.vx);
+                  ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * 10, p.y - Math.sin(a) * 10); ctx.lineTo(x + Math.cos(a) * 8, p.y + Math.sin(a) * 8); ctx.stroke();
+                } else if (p.kind === 'wave') {
+                  ctx.fillStyle = 'rgba(255,120,50,0.9)';
+                  ctx.beginPath();
+                  ctx.moveTo(x, p.y + p.h); ctx.lineTo(x + p.w / 2, p.y); ctx.lineTo(x + p.w, p.y + p.h);
+                  ctx.fill();
+                }
+              });
+            }
+
+            function drawParts(cam) {
+              parts.forEach(function (p) {
+                ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2));
+                ctx.fillStyle = p.c;
+                ctx.fillRect(p.x - cam, p.y, p.s, p.s);
+              });
+              ctx.globalAlpha = 1;
+            }
+
+            function drawHUD() {
+              var i;
+              ctx.textAlign = 'left';
+              ctx.font = '22px sans-serif';
+              for (i = 0; i < hero.maxHp; i++) {
+                ctx.fillStyle = i < hero.hp ? '#ff5d73' : 'rgba(255,255,255,0.22)';
+                ctx.fillText('♥', 12 + i * 24, 30);
+              }
+              ctx.font = '18px sans-serif';
+              for (i = 0; i < 3; i++) {
+                ctx.fillStyle = i < hero.mana ? '#6fc3ff' : 'rgba(255,255,255,0.22)';
+                ctx.fillText('◆', 14 + i * 22, 54);
+              }
+              ctx.textAlign = 'right';
+              ctx.font = '700 16px Cairo, sans-serif'; ctx.fillStyle = '#ffd23f';
+              ctx.fillText('● ' + coins, W - 12, 26);
+              ctx.font = '600 13px Cairo, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.8)';
+              ctx.fillText('المرحلة ' + (levelIdx + 1) + ': ' + L.name, W - 12, 46);
+
+              if (bossRef && !bossRef.dead) {
+                var bw = 380, bx = (W - bw) / 2, by = 14;
+                ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx - 6, by - 4, bw + 12, 40);
+                centerText('أبو ميرا', W / 2, by + 13, '800 16px Cairo, sans-serif', '#ff9a8a');
+                ctx.fillStyle = '#3a1010'; ctx.fillRect(bx, by + 20, bw, 10);
+                ctx.fillStyle = '#e0453a'; ctx.fillRect(bx, by + 20, bw * Math.max(0, bossRef.hp) / bossRef.maxHp, 10);
+                ctx.strokeStyle = '#ffd7d0'; ctx.lineWidth = 1; ctx.strokeRect(bx, by + 20, bw, 10);
+              }
+
+              if (dialog) {
+                ctx.font = '600 15px Cairo, sans-serif';
+                var lines = wrap(dialog.text, W - 80);
+                var bh = 18 + lines.length * 22;
+                var by2 = H - bh - 14;
+                ctx.fillStyle = 'rgba(8,10,16,0.82)'; ctx.fillRect(20, by2, W - 40, bh);
+                ctx.strokeStyle = dialog.color; ctx.lineWidth = 2; ctx.strokeRect(20, by2, W - 40, bh);
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+                for (i = 0; i < lines.length; i++) ctx.fillText(lines[i], W / 2, by2 + 26 + i * 22);
+              }
+            }
+
+            function overlay(title, lines, hint) {
+              ctx.fillStyle = 'rgba(6,8,12,0.78)'; ctx.fillRect(0, 0, W, H);
+              centerText(title, W / 2, 110, '800 46px Cairo, sans-serif', '#e0b04a');
+              var y = 168;
+              ctx.font = '600 17px Cairo, sans-serif';
+              lines.forEach(function (t) { centerText(t, W / 2, y, '600 17px Cairo, sans-serif', '#eef1f5'); y += 28; });
+              if (hint) centerText(hint, W / 2, H - 46, '700 18px Cairo, sans-serif', '#9fd0ff');
+            }
+
+            function draw() {
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              if (state === 'menu') {
+                L = LEVELS[0];
+                var gg = ctx.createLinearGradient(0, 0, 0, H);
+                gg.addColorStop(0, '#1b2236'); gg.addColorStop(1, '#0b0e15');
+                ctx.fillStyle = gg; ctx.fillRect(0, 0, W, H);
+                overlay('ليفاي القديس', [
+                  'الاتحادية احتلت المملكة وأطلقت وحوشها.',
+                  'ليفاي القديس، بشعره الأبيض ولباسه الأسود،',
+                  'يتحالف مع إيموند وتيم إيلاريون',
+                  'ليواجه الزعيم أبو ميرا.',
+                  '◀ ▶ حركة   ⤒ قفز   ⚔ سيف   ✦ سحر'
+                ], 'المس الشاشة للبدء');
+                return;
+              }
+              var cam = clamp(hero.x + 12 - W / 2, 0, Math.max(0, L.width - W));
+              var ox = 0, oy = 0;
+              if (shake > 0) { ox = (Math.random() - 0.5) * 8; oy = (Math.random() - 0.5) * 8; }
+              ctx.translate(ox, oy);
+              drawBackground(cam);
+              drawPlatforms(cam);
+              ctx.save();
+              ctx.translate(0, LANE);
+              drawShadows(cam);
+              drawGoal(cam);
+              drawItems(cam);
+              drawNpcs(cam);
+              drawEnemies(cam);
+              drawHero(cam);
+              drawProjs(cam);
+              drawParts(cam);
+              ctx.restore();
+              drawForeground(cam);
+              drawVignette();
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              drawHUD();
+              if (state === 'clear') {
+                overlay('اكتملت المرحلة', [L.name], '');
+              } else if (state === 'dead') {
+                overlay('سقط البطل', ['لا تيأس يا ليفاي، المعركة ما انتهت.'], 'المس الشاشة للمحاولة من جديد');
+              } else if (state === 'win') {
+                overlay('انتصرت!', [
+                  'سقط أبو ميرا وتحررت المملكة من الاتحادية.',
+                  'ليفاي القديس مع إيموند وتيم إيلاريون: أبطال الأرض.',
+                  'عملاتك: ' + coins
+                ], 'المس الشاشة للعب من جديد');
+              }
+            }
+
+            // ------------------------------------------------------------ loop
+            var last = 0;
+            function frame(ts) {
+              var dt = Math.min(0.033, (ts - last) / 1000 || 0.016);
+              last = ts;
+              update(dt);
+              draw();
+              requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+          })();
+          </script>
+
+          </body>
+          </html>
+          KEOF
+
+      - name: Build APK
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: levi-game-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
